@@ -17,7 +17,6 @@ import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
@@ -28,9 +27,7 @@ import java.util.Properties;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -58,6 +55,7 @@ public class FindClass implements KeyListener
    protected static final boolean IS_MAC = lcOSName.startsWith("mac os x");
    private final static int MIN_WINDOWS_WIDTH = 800;
    private final static int MIN_WINDOWS_HEIGHT = 600;
+   private boolean isCancelling = false;
 
    /**
     * @param args
@@ -107,7 +105,8 @@ public class FindClass implements KeyListener
    {
       mainFrame = new JFrame(APP_NAME);
 
-         mainFrame.setIconImage(Toolkit.getDefaultToolkit().getImage("images/findjar.gif"));
+      mainFrame.setIconImage(Toolkit.getDefaultToolkit().getImage(
+            "images/findjar.gif"));
 
       WindowListener wndCloser = new WindowAdapter()
       {
@@ -226,14 +225,14 @@ public class FindClass implements KeyListener
       c.gridwidth = 1;
       c.fill = GridBagConstraints.NONE;
       mainPanel.add(new JLabel("Search Result"), c);
-      
+
       c.gridx = 1;
       c.gridy = 2;
       c.fill = GridBagConstraints.HORIZONTAL;
       c.weightx = 0;
       btnCancel = new JButton("Cancel");
       mainPanel.add(btnCancel, c);
-      btnSearch.addActionListener(new ActionListener()
+      btnCancel.addActionListener(new ActionListener()
       {
          public void actionPerformed(final ActionEvent arg0)
          {
@@ -242,7 +241,6 @@ public class FindClass implements KeyListener
       });
 
       textResult = new JTextArea();
-      textResult.setEnabled(true);
       c.gridx = 0;
       c.gridy = 3;
       c.weightx = 1;
@@ -274,6 +272,7 @@ public class FindClass implements KeyListener
       }
    };
 
+
    private void searchJarDir(final File jarDir, final String className,
          final int level)
    {
@@ -282,6 +281,16 @@ public class FindClass implements KeyListener
       {
          for (File sub : fileArray)
          {
+            if (isCancelling)
+            {
+               if (level == 0)
+               {
+                  textResult.setText(textResult.getText()
+                        + "Search cancelled by user" + "\n");
+               }
+               return;
+            }
+
             if (sub.isDirectory())
             {
                searchJarDir(sub, className, level + 1);
@@ -329,21 +338,40 @@ public class FindClass implements KeyListener
          public void run()
          {
             mainFrame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
-            btnSearch.setEnabled(false);
-
+            enableButtons(false);
             searchJarDir(jarDir, textClassName.getText(), 0);
             mainFrame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
-            btnSearch.setEnabled(true);
+            enableButtons(true);
          }
+
+     
       }.start();
    }
 
-   private void cancelActions()
+   private void enableButtons(boolean value)
    {
-      System.out.println("Cancel");
+      isCancelling = value;
+      
+      if (isCancelling)
+      {
+         btnSearch.setEnabled(true);
+         btnCancel.setEnabled(false);
+         btnCancel.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+      }
+      else
+      {
+         btnSearch.setEnabled(false);
+         btnCancel.setEnabled(true);
+      }
       
    }
    
+   
+   private void cancelActions()
+   {
+      isCancelling = true;
+   }
+
    private void searchJarFile(final File jarFile, final String className2)
    {
 
